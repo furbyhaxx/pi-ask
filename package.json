@@ -4,6 +4,9 @@
   "description": "Pi package that adds an interactive ask_user clarification tool.",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/eko24ive/pi-ask.git"
@@ -93,16 +96,16 @@
     "@biomejs/biome": "2.4.12",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@earendil-works/pi-ai": "0.84.1",
-    "@earendil-works/pi-coding-agent": "0.84.1",
-    "@earendil-works/pi-tui": "0.84.1",
+    "@earendil-works/pi-ai": "0.87.1",
+    "@earendil-works/pi-coding-agent": "0.87.1",
+    "@earendil-works/pi-tui": "0.87.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^12.0.6",
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.0",
-    "typebox": "1.3.7",
+    "typebox": "1.3.27",
     "@types/node": "25.6.0",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
@@ -118,10 +121,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@earendil-works/pi-agent-core": "0.84.1",
-      "@earendil-works/pi-ai": "0.84.1",
-      "@earendil-works/pi-tui": "0.84.1",
-      "@earendil-works/pi-coding-agent": "0.84.1"
+      "@earendil-works/pi-agent-core": "0.87.1",
+      "@earendil-works/pi-ai": "0.87.1",
+      "@earendil-works/pi-tui": "0.87.1",
+      "@earendil-works/pi-coding-agent": "0.87.1"
     },
     "ignoredBuiltDependencies": [
       "lefthook"
