@@ -14,10 +14,15 @@ import {
 	validateParams,
 } from "./ask-tool-helpers.ts";
 import { getAskConfigStore } from "./config/store.ts";
-import type { RemoteAskRuntime } from "./remote-ask.ts";
+import {
+	applyRemoteAskResponse,
+	type RemoteAskResponse,
+	type RemoteAskRuntime,
+} from "./remote-ask.ts";
 import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
-import type { AskParams } from "./types.ts";
+import { toAskResult } from "./state/result.ts";
+import type { AskParams, AskResult, AskState } from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
 
 export function registerAskTool(
@@ -52,7 +57,7 @@ async function executeAskTool(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 	toolCallId: string,
 	params: AskParams,
-	_signal: AbortSignal | undefined,
+	signal: AbortSignal | undefined,
 	_onUpdate: unknown,
 	ctx: ExtensionContext,
 	remoteAsk?: RemoteAskRuntime
@@ -70,6 +75,17 @@ async function executeAskTool(
 		sourceEntryId: toolCallId,
 	});
 	if (ctx.mode !== "tui") {
+		if (remoteAsk?.hasBridge()) {
+			const result = await waitForHeadlessAnswer(
+				remoteAsk,
+				validation.state,
+				params,
+				toolCallId,
+				signal,
+				config.remoteAsk.timeoutMs
+			);
+			return successfulResponse(result);
+		}
 		return nonInteractiveResponse(validation.state);
 	}
 	ctx.ui.setWorkingVisible(false);
@@ -83,4 +99,72 @@ async function executeAskTool(
 	} finally {
 		ctx.ui.setWorkingVisible(true);
 	}
+}
+
+const MAX_TIMEOUT_DELAY_MS = 2_147_483_647;
+
+function waitForHeadlessAnswer(
+	remoteAsk: RemoteAskRuntime,
+	state: AskState,
+	params: AskParams,
+	toolCallId: string,
+	signal: AbortSignal | undefined,
+	timeoutMs: number | undefined
+): Promise<AskResult> {
+	const cancelledResult = () => toAskResult({ ...state, cancelled: true });
+	if (signal?.aborted) {
+		return Promise.resolve(cancelledResult());
+	}
+
+	return new Promise((resolve) => {
+		let completed = false;
+		let flow: ReturnType<RemoteAskRuntime["startFlow"]> | undefined;
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const timeoutStartedAt = Date.now();
+
+		const finish = (result: AskResult) => {
+			if (completed) {
+				return;
+			}
+			completed = true;
+			if (timeout !== undefined) {
+				clearTimeout(timeout);
+			}
+			signal?.removeEventListener("abort", onAbort);
+			flow?.complete(result);
+			resolve(result);
+		};
+		const onAbort = () => finish(cancelledResult());
+		const scheduleTimeout = () => {
+			if (timeoutMs === undefined) {
+				return;
+			}
+			const remaining = timeoutMs - (Date.now() - timeoutStartedAt);
+			if (remaining <= 0) {
+				finish(cancelledResult());
+				return;
+			}
+			timeout = setTimeout(
+				scheduleTimeout,
+				Math.min(remaining, MAX_TIMEOUT_DELAY_MS)
+			);
+		};
+
+		flow = remoteAsk.startFlow({
+			source: "tool",
+			toolCallId,
+			title: params.title,
+			questions: state.questions,
+			onSubmit(response: RemoteAskResponse) {
+				const applied = applyRemoteAskResponse(state, response);
+				if (!applied.ok) {
+					return applied;
+				}
+				finish(toAskResult(applied.state));
+				return { ok: true };
+			},
+		});
+		signal?.addEventListener("abort", onAbort, { once: true });
+		scheduleTimeout();
+	});
 }

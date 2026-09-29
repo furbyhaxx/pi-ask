@@ -105,6 +105,19 @@ test("config migration adds v5 defaults to v4 configs", () => {
 	assert.deepEqual(result.config.keymaps.main.changeQuestionType, ["t"]);
 });
 
+test("config migration adds remote ask defaults to v5 files", () => {
+	const result = migrateAskConfig({
+		schemaVersion: 5,
+		answer: DEFAULT_ASK_CONFIG.answer,
+		behaviour: DEFAULT_ASK_CONFIG.behaviour,
+		keymaps: DEFAULT_ASK_CONFIG.keymaps,
+		notifications: DEFAULT_ASK_CONFIG.notifications,
+	});
+
+	assert.equal(result.migrated, true);
+	assert.deepEqual(result.config.remoteAsk, {});
+});
+
 test("config migration maps legacy flat keymaps into context keymaps", () => {
 	const result = migrateAskConfig({
 		schemaVersion: 3,

@@ -62,6 +62,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
   - `/answer:again` reopens the latest `/answer` form on the current branch
   - `/ask:replay` replays the latest real `ask_user` form on the current branch
 - 🛟 Automatic recovery of an unanswered `ask_user` form after startup, resume, or fork
+- 🔌 Remote answers for headless `ask_user` calls through a registered in-process event bridge
 - 🗣️ You can talk to your agent to configure pi-ask; it will read the bundled configuration guide and tailor the config for you
 
 ## Feature walkthrough
@@ -134,7 +135,7 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionModels": [
       { "provider": "openai-codex", "id": "gpt-5.4-mini" },
@@ -228,7 +229,7 @@ This package also bundles the `ask-user` skill profile from `skills/ask-user/SKI
 
 You can still add your own agent instruction if you want to further reinforce usage.
 
-For exact input/output and UX guarantees, see [`docs/contract.md`](docs/contract.md).
+For exact input/output and UX guarantees, see [`docs/contract.md`](docs/contract.md). Headless bridge integrations are documented in [`docs/remote-events.md`](docs/remote-events.md).
 
 ## Local development
 

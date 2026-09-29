@@ -20,7 +20,7 @@ function expectedConfigFile(
 	overrides: { behaviour?: typeof DEFAULT_ASK_CONFIG.behaviour } = {}
 ) {
 	return {
-		schemaVersion: 5,
+		schemaVersion: 6,
 		answer: DEFAULT_ASK_CONFIG.answer,
 		behaviour: overrides.behaviour ?? DEFAULT_ASK_CONFIG.behaviour,
 		keymaps: DEFAULT_ASK_CONFIG.keymaps,
@@ -127,6 +127,24 @@ test("config store writes full normalized config on save", async () => {
 			},
 		})
 	);
+	await rm(dirname(path), { force: true, recursive: true });
+});
+
+test("config store persists the optional remote ask timeout", async () => {
+	const path = await makeTempPath("pi-ask-config-remote-timeout-");
+	const store = new AskConfigStore(path);
+
+	await store.save({
+		...DEFAULT_ASK_CONFIG,
+		remoteAsk: { timeoutMs: 60_000 },
+	});
+
+	const saved = JSON.parse(await readFile(path, "utf-8"));
+	assert.equal(saved.schemaVersion, 6);
+	assert.deepEqual(saved.remoteAsk, { timeoutMs: 60_000 });
+	assert.deepEqual((await store.ensureLoaded()).config.remoteAsk, {
+		timeoutMs: 60_000,
+	});
 	await rm(dirname(path), { force: true, recursive: true });
 });
 

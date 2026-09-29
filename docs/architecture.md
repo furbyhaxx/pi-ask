@@ -14,14 +14,14 @@ The codebase is split so the implementation reads through file boundaries and na
 ### Tool surface
 
 - `src/index.ts` — extension entrypoint
-- `src/ask-tool.ts` — tool registration, non-interactive fallback, transcript rendering, ask payload capture
+- `src/ask-tool.ts` — tool registration, non-interactive fallback, headless remote wait, transcript rendering, ask payload capture
 - `src/answer-commands.ts` — `/answer`, `/answer:again`, and `/ask:replay` command wiring
 - `src/answer-extraction.ts` — configured, session-scope-aware extraction model selection, synthetic `ask_user` tool-call extraction, and tolerant text fallback
 - `src/ask-payload-store.ts` — branch-aware persisted ask payload lookup
 - `src/pending-ask.ts` — active-branch unresolved tool-call detection and recovery dismissal persistence
 - `src/resume-pending-ask.ts` — detached lifecycle wiring and recovered answer delivery
 - `src/notifications.ts` — best-effort ask notification payload rendering and channel execution
-- `src/remote-ask.ts` — package-prefixed local event contract, active-flow registry, and explicit remote submission validation
+- `src/remote-ask.ts` — package-prefixed local event contract, bridge discovery, active-flow registry, and explicit remote submission validation
 - `src/schema.ts` — TypeBox schema
 - `src/types.ts` — shared types
 

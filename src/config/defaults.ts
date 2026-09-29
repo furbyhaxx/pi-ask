@@ -4,7 +4,7 @@ import {
 } from "../constants/keymaps.ts";
 import type {
 	AskConfig,
-	AskConfigFileV5,
+	AskConfigFileV6,
 	AskConfigKeymaps,
 	AskNotificationChannel,
 } from "./schema.ts";
@@ -35,11 +35,13 @@ export const DEFAULT_ASK_CONFIG: AskConfig = {
 		channels: ["bell"],
 		enabled: true,
 	},
+	remoteAsk: {},
 };
 
 export function normalizeAskConfig(
-	config?: Partial<AskConfigFileV5> | AskConfig
+	config?: Partial<AskConfigFileV6> | AskConfig
 ): AskConfig {
+	const timeoutMs = positiveIntegerOrUndefined(config?.remoteAsk?.timeoutMs);
 	return {
 		answer: {
 			extractionModels:
@@ -80,13 +82,14 @@ export function normalizeAskConfig(
 				config?.notifications?.enabled ??
 				DEFAULT_ASK_CONFIG.notifications.enabled,
 		},
+		remoteAsk: timeoutMs === undefined ? {} : { timeoutMs },
 	};
 }
 
-export function toAskConfigFileV5(config: AskConfig): AskConfigFileV5 {
+export function toAskConfigFileV6(config: AskConfig): AskConfigFileV6 {
 	const normalized = normalizeAskConfig(config);
 	return {
-		schemaVersion: 5,
+		schemaVersion: 6,
 		answer: {
 			extractionModels: normalized.answer.extractionModels,
 			extractionRetries: normalized.answer.extractionRetries,
@@ -106,6 +109,9 @@ export function toAskConfigFileV5(config: AskConfig): AskConfigFileV5 {
 			channels: normalized.notifications.channels,
 			enabled: normalized.notifications.enabled,
 		},
+		...(normalized.remoteAsk.timeoutMs === undefined
+			? {}
+			: { remoteAsk: { timeoutMs: normalized.remoteAsk.timeoutMs } }),
 	};
 }
 
@@ -213,4 +219,10 @@ function positiveNumberOrDefault(value: unknown, fallback: number): number {
 	return typeof value === "number" && Number.isFinite(value) && value > 0
 		? value
 		: fallback;
+}
+
+function positiveIntegerOrUndefined(value: unknown): number | undefined {
+	return typeof value === "number" && Number.isSafeInteger(value) && value > 0
+		? value
+		: undefined;
 }

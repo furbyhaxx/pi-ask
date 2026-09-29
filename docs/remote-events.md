@@ -6,6 +6,11 @@ Use this for local bridges: status cards, desktop helpers, or approval UIs. Do n
 
 ## Channels
 
+Bridge discovery:
+
+- `@eko24ive/pi-ask:bridge-discover`
+- `@eko24ive/pi-ask:bridge-ready`
+
 Lifecycle:
 
 - `@eko24ive/pi-ask:started`
@@ -16,9 +21,34 @@ Remote submit:
 - `@eko24ive/pi-ask:submit`
 - `@eko24ive/pi-ask:submit-result`
 
+## Bridge handshake
+
+Both handshake events use `{ version: 1 }`:
+
+```ts
+type PiAskBridgeDiscoverEvent = { version: 1 };
+type PiAskBridgeReadyEvent = { version: 1 };
+```
+
+When pi-ask starts, it listens for `bridge-ready` and emits `bridge-discover`. A bridge should emit `bridge-ready` once during its own initialization and again whenever it receives `bridge-discover`. This covers either extension load order. pi-ask records a valid ready event for the lifetime of its runtime; repeated registrations are harmless. Non-TUI `ask_user` calls use remote answering only after that registration. With no registration, the existing non-interactive fallback is unchanged.
+
+```ts
+const DISCOVER = "@eko24ive/pi-ask:bridge-discover";
+const READY = "@eko24ive/pi-ask:bridge-ready";
+
+function registerBridge(pi: any) {
+  pi.events.emit(READY, { version: 1 });
+  pi.events.on(DISCOVER, (event: any) => {
+    if (event.version === 1) pi.events.emit(READY, { version: 1 });
+  });
+}
+```
+
+Set `remoteAsk.timeoutMs` in the pi-ask config to a positive integer millisecond duration; omit it to wait indefinitely. Timeout and tool abort both return a cancelled result. TUI asks and `/answer` replay/extraction commands are unchanged and remain TUI-only.
+
 ## Started
 
-Emitted after a validated ask UI flow opens.
+Emitted after a validated ask flow starts (the TUI is open in interactive mode; a headless call is waiting for a bridge answer).
 
 ```ts
 type PiAskStartedEvent = {
@@ -121,6 +151,13 @@ type PiAskCompletedEvent = {
 
 ```ts
 export default function piAskBridge(pi: any) {
+  const register = () =>
+    pi.events.emit("@eko24ive/pi-ask:bridge-ready", { version: 1 });
+  register();
+  pi.events.on("@eko24ive/pi-ask:bridge-discover", (event: any) => {
+    if (event.version === 1) register();
+  });
+
   pi.events.on("@eko24ive/pi-ask:started", (event: any) => {
     const question = event.questions[0];
     const option = question.options[0];

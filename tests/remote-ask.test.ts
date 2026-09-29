@@ -5,6 +5,8 @@ import { getAskConfigStore } from "../src/config/store.ts";
 import {
 	applyRemoteAskResponse,
 	createRemoteAskRuntime,
+	PI_ASK_BRIDGE_DISCOVER_EVENT,
+	PI_ASK_BRIDGE_READY_EVENT,
 	PI_ASK_COMPLETED_EVENT,
 	PI_ASK_STARTED_EVENT,
 	PI_ASK_SUBMIT_EVENT,
@@ -43,6 +45,23 @@ class TestEventBus {
 		};
 	}
 }
+
+test("remote runtime discovers and records an already-loaded bridge", () => {
+	const bus = new TestEventBus();
+	bus.on(PI_ASK_BRIDGE_DISCOVER_EVENT, () => {
+		bus.emit(PI_ASK_BRIDGE_READY_EVENT, { version: 1 });
+	});
+
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+
+	assert.equal(remoteAsk.hasBridge(), true);
+	assert.equal(
+		bus.events.some((event) => event.channel === PI_ASK_BRIDGE_DISCOVER_EVENT),
+		true
+	);
+	remoteAsk.disposeAll();
+	assert.equal(remoteAsk.hasBridge(), false);
+});
 
 test("remote answer response validates and serializes explicit option values", () => {
 	const state = createInitialState({

@@ -7,6 +7,8 @@ import type {
 	AskStateAnswer,
 } from "./types.ts";
 
+export const PI_ASK_BRIDGE_DISCOVER_EVENT = "@eko24ive/pi-ask:bridge-discover";
+export const PI_ASK_BRIDGE_READY_EVENT = "@eko24ive/pi-ask:bridge-ready";
 export const PI_ASK_STARTED_EVENT = "@eko24ive/pi-ask:started";
 export const PI_ASK_COMPLETED_EVENT = "@eko24ive/pi-ask:completed";
 export const PI_ASK_SUBMIT_EVENT = "@eko24ive/pi-ask:submit";
@@ -101,6 +103,7 @@ export interface RemoteAskFlowHandle {
 
 export interface RemoteAskRuntime {
 	disposeAll: () => void;
+	hasBridge: () => boolean;
 	startFlow: (flow: RemoteAskFlowInput) => RemoteAskFlowHandle;
 }
 
@@ -108,14 +111,29 @@ type EventBus = ExtensionAPI["events"];
 
 export function createRemoteAskRuntime(events: EventBus): RemoteAskRuntime {
 	const activeFlows = new Map<string, ActiveRemoteAskFlow>();
+	let bridgeAvailable = false;
 	const unsubscribeSubmit = events.on(PI_ASK_SUBMIT_EVENT, (data) => {
 		handleSubmitEvent(events, activeFlows, data);
 	});
+	const unsubscribeBridgeReady = events.on(
+		PI_ASK_BRIDGE_READY_EVENT,
+		(data) => {
+			if (isBridgeRegistration(data)) {
+				bridgeAvailable = true;
+			}
+		}
+	);
+	events.emit(PI_ASK_BRIDGE_DISCOVER_EVENT, { version: 1 });
 
 	return {
 		disposeAll() {
 			activeFlows.clear();
+			bridgeAvailable = false;
 			unsubscribeSubmit();
+			unsubscribeBridgeReady();
+		},
+		hasBridge() {
+			return bridgeAvailable;
 		},
 		startFlow(flow) {
 			return startRemoteAskFlow(events, activeFlows, flow);
@@ -541,6 +559,10 @@ function invalidAnswer(message: string): {
 	ok: false;
 } {
 	return { ok: false, error: "invalid_answer", message };
+}
+
+function isBridgeRegistration(data: unknown): boolean {
+	return isPlainObject(data) && data.version === 1;
 }
 
 function createFlowId(toolCallId?: string): string {

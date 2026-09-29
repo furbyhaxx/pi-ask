@@ -2,6 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Value } from "typebox/value";
 import { registerAskTool } from "../src/ask-tool.ts";
+import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
+import { getAskConfigStore } from "../src/config/store.ts";
+import {
+	createRemoteAskRuntime,
+	PI_ASK_BRIDGE_READY_EVENT,
+	PI_ASK_COMPLETED_EVENT,
+	PI_ASK_STARTED_EVENT,
+	PI_ASK_SUBMIT_EVENT,
+	type RemoteAskCompletedEvent,
+	type RemoteAskStartedEvent,
+} from "../src/remote-ask.ts";
 import { AskOptionSchema, AskParamsSchema } from "../src/schema.ts";
 import type { AskParams } from "../src/types.ts";
 
@@ -24,17 +35,22 @@ const noop = () => {
 	// intentional test callback
 };
 
-function registerMockTool() {
+function registerMockTool(
+	remoteAsk?: ReturnType<typeof createRemoteAskRuntime>
+) {
 	const tools: Record<string, unknown>[] = [];
 	const entries: Array<{ customType: string; data: unknown }> = [];
-	registerAskTool({
-		appendEntry(customType: string, data: unknown) {
-			entries.push({ customType, data });
-		},
-		registerTool(tool: unknown) {
-			tools.push(tool as Record<string, unknown>);
-		},
-	} as never);
+	registerAskTool(
+		{
+			appendEntry(customType: string, data: unknown) {
+				entries.push({ customType, data });
+			},
+			registerTool(tool: unknown) {
+				tools.push(tool as Record<string, unknown>);
+			},
+		} as never,
+		remoteAsk
+	);
 	return {
 		entries,
 		tool: tools[0] as {
@@ -50,6 +66,32 @@ function registerMockTool() {
 			) => { text: string };
 		},
 	};
+}
+
+class TestEventBus {
+	readonly events: Array<{ channel: string; data: unknown }> = [];
+	private readonly handlers = new Map<string, Array<(data: unknown) => void>>();
+
+	emit(channel: string, data: unknown): void {
+		this.events.push({ channel, data });
+		for (const handler of this.handlers.get(channel) ?? []) {
+			handler(data);
+		}
+	}
+
+	on(channel: string, handler: (data: unknown) => void): () => void {
+		const handlers = this.handlers.get(channel) ?? [];
+		handlers.push(handler);
+		this.handlers.set(channel, handlers);
+		return () => {
+			this.handlers.set(
+				channel,
+				(this.handlers.get(channel) ?? []).filter(
+					(candidate) => candidate !== handler
+				)
+			);
+		};
+	}
 }
 
 function makeCtx(hasUi: boolean, mode = hasUi ? "tui" : "print"): unknown {
@@ -153,6 +195,119 @@ test("ask tool returns pending questions in non-interactive mode", async () => {
 	assert.match(result.content[0].text, FIRST_QUESTION_RE);
 	assert.match(result.content[0].text, SPEED_OPTION_RE);
 	assert.match(result.content[0].text, CUSTOM_OPTION_RE);
+});
+
+test("ask tool waits for a headless bridge answer and returns normalized details", async () => {
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	bus.emit(PI_ASK_BRIDGE_READY_EVENT, { version: 1 });
+	bus.on(PI_ASK_STARTED_EVENT, (data) => {
+		const event = data as RemoteAskStartedEvent;
+		bus.emit(PI_ASK_SUBMIT_EVENT, {
+			version: 1,
+			requestId: "bridge-request-1",
+			flowId: event.flowId,
+			response: {
+				kind: "answer",
+				answers: { goal: { values: ["speed"] } },
+			},
+		});
+	});
+	const { tool } = registerMockTool(remoteAsk);
+
+	const result = await tool.execute(
+		"call-1",
+		sampleParams(),
+		undefined,
+		noop,
+		makeCtx(false, "rpc")
+	);
+
+	assert.equal(result.details.cancelled, false);
+	assert.deepEqual(result.details.answers.goal, {
+		values: ["speed"],
+		labels: ["Speed"],
+		indices: [1],
+		customText: undefined,
+		note: undefined,
+		optionNotes: undefined,
+	});
+	const started = bus.events.find(
+		(event) => event.channel === PI_ASK_STARTED_EVENT
+	)?.data as RemoteAskStartedEvent;
+	assert.equal(started.title, "Clarify next step");
+	assert.equal(started.questions[0]?.options[0]?.value, "speed");
+	assert.equal(started.flowId, "tool:call-1");
+	const completed = bus.events.find(
+		(event) => event.channel === PI_ASK_COMPLETED_EVENT
+	)?.data as RemoteAskCompletedEvent;
+	assert.equal(completed.result.cancelled, false);
+	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+test("headless bridge can cancel an ask", async () => {
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	bus.emit(PI_ASK_BRIDGE_READY_EVENT, { version: 1 });
+	bus.on(PI_ASK_STARTED_EVENT, (data) => {
+		const event = data as RemoteAskStartedEvent;
+		bus.emit(PI_ASK_SUBMIT_EVENT, {
+			version: 1,
+			requestId: "bridge-cancel-request",
+			flowId: event.flowId,
+			response: { kind: "cancel" },
+		});
+	});
+	const { tool } = registerMockTool(remoteAsk);
+
+	const result = await tool.execute(
+		"cancel-call",
+		sampleParams(),
+		undefined,
+		noop,
+		makeCtx(false, "rpc")
+	);
+
+	assert.equal(result.details.cancelled, true);
+	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+test("headless remote asks cancel when aborted or when configured timeout expires", async () => {
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	bus.emit(PI_ASK_BRIDGE_READY_EVENT, { version: 1 });
+	const { tool } = registerMockTool(remoteAsk);
+	const abortController = new AbortController();
+	bus.on(PI_ASK_STARTED_EVENT, () => abortController.abort());
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+
+	const aborted = await tool.execute(
+		"abort-call",
+		sampleParams(),
+		abortController.signal,
+		noop,
+		makeCtx(false, "rpc")
+	);
+	assert.equal(aborted.details.cancelled, true);
+
+	getAskConfigStore().setConfig({
+		...DEFAULT_ASK_CONFIG,
+		remoteAsk: { timeoutMs: 1 },
+	});
+	const timedOut = await tool.execute(
+		"timeout-call",
+		sampleParams(),
+		undefined,
+		noop,
+		makeCtx(false, "rpc")
+	);
+	assert.equal(timedOut.details.cancelled, true);
+	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
 test("ask tool does not open custom UI outside TUI mode", async () => {

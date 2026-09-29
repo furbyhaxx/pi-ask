@@ -22,6 +22,7 @@ const savedConfig: AskConfig = {
 		channels: ["bell"],
 		enabled: true,
 	},
+	remoteAsk: {},
 };
 
 function plainTheme() {

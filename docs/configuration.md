@@ -30,7 +30,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionModels": [
       { "provider": "openai-codex", "id": "<model-id>" },
@@ -87,7 +87,8 @@ Unsupported future versions or invalid files are left unchanged and defaults are
   "notifications": {
     "enabled": true,
     "channels": ["bell"]
-  }
+  },
+  "remoteAsk": {}
 }
 ```
 
@@ -118,6 +119,18 @@ pi auth check --provider openai-codex --model gpt-5.4-mini
 - type: integer from `0` to `3`
 - default: `1`
 - effect: number of retry attempts after the model omits `ask_user`, returns invalid tool arguments, or produces an invalid JSON text fallback; retries include the previous error and response as feedback
+
+## Headless remote answering
+
+### `remoteAsk.timeoutMs`
+
+- type: optional positive integer, in milliseconds
+- default: unset (wait indefinitely)
+- effect: limits how long a non-TUI `ask_user` call waits after a trusted in-process bridge registers; expiry returns a cancelled result
+- cancellation: the tool abort signal also ends the wait as cancelled
+- scope: does not affect TUI asks or `/answer`, `/answer:again`, and `/ask:replay`
+
+See [`remote-events.md`](remote-events.md) for the bridge handshake and submit contract.
 
 ## Behaviour
 
@@ -327,7 +340,7 @@ Invalid keymaps include:
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionRetries": 1,
     "extractionTimeoutMs": 30000,
@@ -399,7 +412,7 @@ Invalid keymaps include:
 When editing this config for a user:
 
 - preserve unrelated fields
-- keep `schemaVersion` at `5`
+- keep `schemaVersion` at `6`
 - preserve `answer.extractionModels` as explicit provider/id pairs
 - keep `answer.extractionRetries` between `0` and `3`
 - do not assign fixed numeric shortcuts (`1` through `9`) to configurable actions

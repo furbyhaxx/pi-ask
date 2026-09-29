@@ -11,7 +11,10 @@ function registerExtensionHandlers() {
 		on(event: string, handler: (event: never) => unknown) {
 			handlers[event] = handler;
 		},
-		events: { on: () => () => undefined },
+		events: {
+			on: () => () => undefined,
+			emit: () => undefined,
+		},
 		registerCommand: () => undefined,
 		registerTool: () => undefined,
 	} as never;

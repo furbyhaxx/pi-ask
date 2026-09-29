@@ -268,7 +268,7 @@ Dirty dismiss:
 
 ## Non-TUI and non-interactive modes
 
-The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result in `details` instead of opening custom UI.
+The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, `ask_user` uses a registered local bridge when present: it emits the normal `started` event, waits for an explicit remote answer or cancellation, and returns the same normalized result shape as a TUI ask. A configured timeout or the tool abort signal ends the wait with a cancelled result. Without a registered bridge, the tool keeps the existing `Needs user input: ask_user requires interactive TUI mode.` fallback and pending-question details. TUI behavior is unchanged.
 
 The public tool schema requires question `id` and `prompt` plus option `value` and `label`, and it restricts question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
 
@@ -291,7 +291,7 @@ Channels:
 
 Remote submissions must be explicit `{ kind: "answer" }` or `{ kind: "cancel" }` responses. Remote answers use question ids and normalized option values from the started event. pi-ask validates ids and values, recomputes labels/indices, and does not infer approval semantics from labels.
 
-See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a local smoke test.
+See [`remote-events.md`](remote-events.md) for bridge discovery and registration, payload shapes, examples, and a local smoke test. `/answer`, `/answer:again`, and `/ask:replay` remain TUI-only.
 
 ## Slash command replay/extraction
 

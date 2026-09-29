@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Added
+
+* support headless remote `ask_user` answers through registered event bridges
+
 # [1.2.0](https://github.com/eko24ive/pi-ask/compare/v1.1.0...v1.2.0) (2026-08-16)
 
 

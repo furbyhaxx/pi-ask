@@ -102,8 +102,8 @@ const AskConfigKeymapsSchema = Type.Object({
 	}),
 });
 
-export const AskConfigFileV5Schema = Type.Object({
-	schemaVersion: Type.Literal(5),
+export const AskConfigFileV6Schema = Type.Object({
+	schemaVersion: Type.Literal(6),
 	answer: Type.Optional(
 		Type.Object({
 			extractionModels: Type.Optional(
@@ -127,6 +127,11 @@ export const AskConfigFileV5Schema = Type.Object({
 		Type.Object({
 			channels: Type.Optional(Type.Array(AskNotificationChannelSchema)),
 			enabled: Type.Optional(Type.Boolean()),
+		})
+	),
+	remoteAsk: Type.Optional(
+		Type.Object({
+			timeoutMs: Type.Optional(Type.Integer({ minimum: 1 })),
 		})
 	),
 });
@@ -201,7 +206,7 @@ export const AskConfigFileV2Schema = Type.Omit(AskConfigFileV3Schema, [
 	"schemaVersion",
 ]);
 
-export type AskConfigFileV5 = Static<typeof AskConfigFileV5Schema>;
+export type AskConfigFileV6 = Static<typeof AskConfigFileV6Schema>;
 export type AskConfigFileV4 = Static<typeof AskConfigFileV4Schema>;
 export type AskConfigFileV3 = Static<typeof AskConfigFileV3Schema>;
 export type AskConfigFileV2 = Static<typeof AskConfigFileV2Schema> & {
@@ -282,6 +287,9 @@ export interface AskConfig {
 		channels: AskNotificationChannel[];
 		enabled: boolean;
 	};
+	remoteAsk: {
+		timeoutMs?: number;
+	};
 }
 
-export const validateAskConfigFileV5 = Compile(AskConfigFileV5Schema);
+export const validateAskConfigFileV6 = Compile(AskConfigFileV6Schema);
