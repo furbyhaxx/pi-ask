@@ -1,4 +1,4 @@
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import {
 	getCurrentQuestion,
@@ -7,7 +7,7 @@ import {
 } from "../state/selectors.ts";
 import { wrapText } from "../text.ts";
 import type { AskState } from "../types.ts";
-import { renderFooterText } from "./render-helpers.ts";
+import { fitToWidth, renderFooterText } from "./render-helpers.ts";
 import type { Theme } from "./render-types.ts";
 
 export function renderFrameHeader(args: {
@@ -17,7 +17,7 @@ export function renderFrameHeader(args: {
 	width: number;
 }) {
 	const { lines, state, theme, width } = args;
-	const add = (text = "") => lines.push(truncateToWidth(text, width));
+	const add = (text = "") => lines.push(fitToWidth(text, width));
 
 	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
 	if (state.title) {
@@ -37,7 +37,7 @@ export function renderFrameFooter(args: {
 	width: number;
 }) {
 	const { config, footerNotice, lines, state, theme, width } = args;
-	const add = (text = "") => lines.push(truncateToWidth(text, width));
+	const add = (text = "") => lines.push(fitToWidth(text, width));
 	const footer = renderFooter(config, state, width);
 	const noticeLines = footerNotice ? wrapText(footerNotice, width) : [];
 	if (noticeLines.length > 0 || footer.length > 0) {
@@ -96,7 +96,7 @@ function renderTabs(state: AskState, theme: Theme, width: number): string {
 		.slice(start, end + 1)
 		.map((tab) => tab.render)
 		.join(" ");
-	return truncateToWidth(
+	return fitToWidth(
 		`${TAB_PREFIX[0]}${leftArrow}${visibleTabs}${rightArrow}`,
 		width
 	);

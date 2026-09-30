@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import {
+	fitToWidth,
 	renderEditorBlock,
 	renderFooterText,
 } from "../src/ui/render-helpers.ts";
@@ -102,4 +104,28 @@ test("editing footers use configured key labels", () => {
 		renderFooterText(config, "note"),
 		" Ctrl+K save · Q close · ? settings"
 	);
+});
+
+test("fitToWidth matches truncateToWidth for framed, ansi and oversized lines", () => {
+	const cases: [string, number][] = [
+		["", 10],
+		["plain", 10],
+		["exactly-10c", 10],
+		["exactly-10c", 9],
+		["─".repeat(10), 10],
+		["─".repeat(12), 10],
+		["\u001b[31mred\u001b[0m", 10],
+		["\u001b[31mred\u001b[0m and more", 10],
+		["tab\tseparated", 10],
+		["wide 日本語 text here", 8],
+		["emoji 👍🏽 cluster text", 6],
+	];
+
+	for (const [text, width] of cases) {
+		assert.equal(
+			fitToWidth(text, width),
+			truncateToWidth(text, width),
+			`mismatch for ${JSON.stringify(text)} at width ${width}`
+		);
+	}
 });

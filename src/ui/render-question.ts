@@ -1,10 +1,7 @@
-import {
-	truncateToWidth,
-	visibleWidth,
-	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
+import { visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS, UI_TEXT } from "../constants/ui.ts";
 import {
+	fitToWidth,
 	measurePreviewLeftWidth,
 	mergeColumns,
 	pushSavedNote,
@@ -108,7 +105,7 @@ function renderPreviewQuestion(
 	}
 
 	const { lines, width, theme } = context;
-	const add = (text = "") => lines.push(truncateToWidth(text, width));
+	const add = (text = "") => lines.push(fitToWidth(text, width));
 
 	if (model.previewLayout === "custom") {
 		renderPreviewOptionList(model.rows, theme, width).forEach(add);
@@ -315,6 +312,6 @@ function renderOptionSubtitle(
 		text,
 		Math.max(1, width - visibleWidth(indent))
 	)) {
-		lines.push(truncateToWidth(`${indent}${line}`, width));
+		lines.push(fitToWidth(`${indent}${line}`, width));
 	}
 }

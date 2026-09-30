@@ -25,6 +25,14 @@ const EDITOR_SCROLL_BORDER_PATTERN = /^─── [↑↓] \d+ more ─*$/;
 const ANSI_CONTROL_SEQUENCE = "\u001b[";
 const ANSI_COLOR_TERMINATOR = "m";
 
+/**
+ * `truncateToWidth` walks every grapheme cluster through a Unicode width regex
+ * even when the line already fits, which is the common case for framed lines.
+ */
+export function fitToWidth(text: string, width: number): string {
+	return visibleWidth(text) <= width ? text : truncateToWidth(text, width);
+}
+
 export function pushWrappedText(
 	lines: string[],
 	text: string,
@@ -39,12 +47,10 @@ export function pushWrappedText(
 	for (let index = 0; index < wrapped.length; index++) {
 		const line = wrapped[index];
 		const currentPrefix = index === 0 ? prefix : continuationPrefix;
-		lines.push(
-			truncateToWidth(`${currentPrefix}${theme.fg(color, line)}`, width)
-		);
+		lines.push(fitToWidth(`${currentPrefix}${theme.fg(color, line)}`, width));
 	}
 	if (wrapped.length === 0) {
-		lines.push(truncateToWidth(prefix, width));
+		lines.push(fitToWidth(prefix, width));
 	}
 }
 
@@ -55,7 +61,7 @@ export function renderInputLine(
 	color: ThemeColor = "text"
 ): string {
 	const innerWidth = Math.max(4, availableWidth - 2);
-	const truncated = truncateToWidth(line, innerWidth);
+	const truncated = fitToWidth(line, innerWidth);
 	const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
 	return theme.bg("selectedBg", ` ${theme.fg(color, truncated)}${padding} `);
 }
@@ -87,7 +93,7 @@ export function renderEditorBlock(args: {
 
 	if (isEmpty && placeholder) {
 		lines.push(
-			truncateToWidth(
+			fitToWidth(
 				`${indent}${renderInputLine(
 					placeholder,
 					availableWidth,
@@ -102,7 +108,7 @@ export function renderEditorBlock(args: {
 
 	for (const editorLine of innerLines) {
 		lines.push(
-			truncateToWidth(
+			fitToWidth(
 				`${indent}${renderEditorLine(editorLine, availableWidth, theme)}`,
 				width
 			)
@@ -143,11 +149,11 @@ export function renderLabeledEditorBlock(args: {
 			? renderInputLine(placeholder, editorWidth, theme, placeholderColor)
 			: renderEditorLine(contentLines[0] ?? "", editorWidth, theme);
 
-	lines.push(truncateToWidth(`${indent}${labelText} ${firstLine}`, width));
+	lines.push(fitToWidth(`${indent}${labelText} ${firstLine}`, width));
 
 	for (const editorLine of contentLines.slice(1)) {
 		lines.push(
-			truncateToWidth(
+			fitToWidth(
 				`${contentIndent}${renderEditorLine(editorLine, availableWidth, theme)}`,
 				width
 			)
@@ -211,7 +217,7 @@ function renderEditorLine(
 	theme: Theme
 ): string {
 	const innerWidth = Math.max(4, availableWidth - 2);
-	const truncated = truncateToWidth(line, innerWidth);
+	const truncated = fitToWidth(line, innerWidth);
 	const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
 	return renderPersistentBackground(
 		`${truncated}${padding}`,
@@ -308,7 +314,7 @@ export function mergeColumns(
 		const leftLine = left[index] ?? "";
 		const rightLine = right[index] ?? "";
 		const paddedLeft = padToVisibleWidth(leftLine, leftWidth);
-		lines.push(truncateToWidth(`${paddedLeft}  ${rightLine}`, width));
+		lines.push(fitToWidth(`${paddedLeft}  ${rightLine}`, width));
 	}
 	return lines;
 }
