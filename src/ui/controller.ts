@@ -90,6 +90,7 @@ interface AskFlowController {
 	dismissNotice?: string;
 	done: Done;
 	editor: Editor;
+	finished: boolean;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
 	remoteFlow?: RemoteAskFlowHandle;
@@ -147,6 +148,7 @@ function createAskFlowController(
 		dismissNotice: undefined,
 		done,
 		editor: createEditor(tui, theme, params.cwd),
+		finished: false,
 		settingsOpen: false,
 		state: createInitialState(params, params.flowOptions),
 		suppressAutoInputForSelection: false,
@@ -574,9 +576,10 @@ async function notifyCurrentQuestion(
 }
 
 function maybeFinish(controller: AskFlowController) {
-	if (!controller.state.completed) {
+	if (!(controller.state.completed && !controller.finished)) {
 		return;
 	}
+	controller.finished = true;
 	const result = toAskResult(controller.state);
 	controller.remoteFlow?.complete(result);
 	controller.done(result);
