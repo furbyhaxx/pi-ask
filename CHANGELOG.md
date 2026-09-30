@@ -4,6 +4,19 @@
 
 * support headless remote `ask_user` answers through registered event bridges
 
+### Bug Fixes
+
+* resolve auto-submitted ask flows that stranded on the review tab instead of submitting
+* resolve a completed ask flow at most once, so a keystroke delivered after completion no longer produces a second result
+* recover the ask config instead of replaying a failed load for the rest of the session when the config file cannot be read
+
+### Performance
+
+* cut ask frame rendering from 972us to 132us per frame by skipping `truncateToWidth` on lines that already fit the frame width
+* cut key handling from 113us to 19us per keystroke by memoizing the key binding table per config value
+* cut answer editor rendering from 10.96ms to 6.05ms for a 20 line ansi-colored body by applying the same width guard to editor lines
+* strip ansi color codes in a single pass instead of rebuilding the line once per escape sequence
+
 # [1.2.0](https://github.com/eko24ive/pi-ask/compare/v1.1.0...v1.2.0) (2026-08-16)
 
 
