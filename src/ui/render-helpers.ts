@@ -23,7 +23,7 @@ type ThemeColor =
 const EDITOR_BORDER_PATTERN = /^[┌┐└┘─]+$/;
 const EDITOR_SCROLL_BORDER_PATTERN = /^─── [↑↓] \d+ more ─*$/;
 const ANSI_CONTROL_SEQUENCE = "\u001b[";
-const ANSI_TERMINATOR = "m";
+const ANSI_COLOR_TERMINATOR = "m";
 
 export function pushWrappedText(
 	lines: string[],
@@ -182,24 +182,27 @@ function isEditorBorderLine(line: string): boolean {
 }
 
 function stripAnsiColorCodes(text: string): string {
-	let result = text;
-	while (true) {
-		const start = result.indexOf(ANSI_CONTROL_SEQUENCE);
+	if (!text.includes(ANSI_CONTROL_SEQUENCE)) {
+		return text;
+	}
+	let result = "";
+	let index = 0;
+	while (index < text.length) {
+		const start = text.indexOf(ANSI_CONTROL_SEQUENCE, index);
 		if (start === -1) {
-			return result;
+			break;
 		}
-
-		const end = result.indexOf(
-			ANSI_TERMINATOR,
+		const end = text.indexOf(
+			ANSI_COLOR_TERMINATOR,
 			start + ANSI_CONTROL_SEQUENCE.length
 		);
 		if (end === -1) {
-			return result;
+			break;
 		}
-
-		result =
-			result.slice(0, start) + result.slice(end + ANSI_TERMINATOR.length);
+		result += text.slice(index, start);
+		index = end + ANSI_COLOR_TERMINATOR.length;
 	}
+	return result + text.slice(index);
 }
 
 function renderEditorLine(
