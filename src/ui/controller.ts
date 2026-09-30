@@ -421,7 +421,9 @@ function commitState(
 	controller.state = maybeAutoSubmitState(controller.state, controller.config);
 	hydrateEditor(controller);
 	refresh(controller);
-	if (options.finish) {
+	// Auto-submit can complete the state on a navigation transition that never asked to
+	// finish; leaving it unresolved would strand the flow on the review tab forever.
+	if (options.finish || controller.state.completed) {
 		maybeFinish(controller);
 	}
 }
@@ -572,11 +574,12 @@ async function notifyCurrentQuestion(
 }
 
 function maybeFinish(controller: AskFlowController) {
-	if (controller.state.completed) {
-		const result = toAskResult(controller.state);
-		controller.remoteFlow?.complete(result);
-		controller.done(result);
+	if (!controller.state.completed) {
+		return;
 	}
+	const result = toAskResult(controller.state);
+	controller.remoteFlow?.complete(result);
+	controller.done(result);
 }
 
 function startRemoteFlow(
