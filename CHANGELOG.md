@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+# [1.2.1](https://github.com/furbyhaxx/pi-ask/compare/v1.2.0...v1.2.1) (2026-09-30)
+
 ### Added
 
 * support headless remote `ask_user` answers through registered event bridges
