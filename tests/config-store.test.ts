@@ -328,3 +328,22 @@ test("config store falls back only keymaps when configured keymaps are invalid",
 	assert.match(result.notice?.text ?? "", DEFAULT_KEYMAPS_NOTICE_PATTERN);
 	await rm(dirname(path), { force: true, recursive: true });
 });
+
+test("config store retries after a failed load instead of replaying the rejection", async () => {
+	const path = await makeTempPath("pi-ask-config-unreadable-");
+	await mkdir(path, { recursive: true });
+	const store = new AskConfigStore(path);
+
+	await assert.rejects(store.ensureLoaded());
+
+	await rm(path, { force: true, recursive: true });
+	await writeFile(path, JSON.stringify(expectedConfigFile()));
+
+	const result = await store.ensureLoaded();
+
+	assert.deepEqual(result.config, {
+		...DEFAULT_ASK_CONFIG,
+		keymaps: DEFAULT_ASK_CONFIG.keymaps,
+	});
+	await rm(dirname(path), { force: true, recursive: true });
+});

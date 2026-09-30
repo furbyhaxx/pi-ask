@@ -52,12 +52,13 @@ export class AskConfigStore {
 			return { config: this.config, notice: this.notice };
 		}
 		if (!this.loadPromise) {
-			this.loadPromise = this.loadFromDisk();
+			this.loadPromise = this.loadFromDisk().finally(() => {
+				this.loadPromise = undefined;
+			});
 		}
 		const result = await this.loadPromise;
 		this.config = result.config;
 		this.notice = result.notice;
-		this.loadPromise = undefined;
 		return result;
 	}
 
