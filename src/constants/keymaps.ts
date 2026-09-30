@@ -220,9 +220,21 @@ export function matchesDigitShortcut(data: string): number | null {
 	return DIGIT_SHORTCUT_PATTERN.test(data) ? Number(data) : null;
 }
 
+// Keymaps are rendered into the footer of every frame and matched on every
+// keystroke. The store hands out one config object per config value, so identity
+// is a complete cache key and a changed config always misses.
+const keyBindingsCache = new WeakMap<
+	AskConfig,
+	Record<string, AskKeyBinding>
+>();
+
 export function getAskKeyBindings(
 	config: AskConfig
 ): Record<string, AskKeyBinding> {
+	const cached = keyBindingsCache.get(config);
+	if (cached) {
+		return cached;
+	}
 	const entries: [string, AskKeyBinding][] = [];
 	for (const context of Object.keys(config.keymaps) as AskKeymapContext[]) {
 		const actions = config.keymaps[context] as Record<
@@ -266,7 +278,9 @@ export function getAskKeyBindings(
 			label: "@",
 		},
 	]);
-	return Object.fromEntries(entries);
+	const bindings = Object.fromEntries(entries);
+	keyBindingsCache.set(config, bindings);
+	return bindings;
 }
 
 export function getAskContextBindings<C extends AskKeymapContext>(
